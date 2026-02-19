@@ -76,7 +76,7 @@ export default function JudgesPage({
         {/* D Judges */}
         <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
           <div className="px-4 py-2 bg-navy-100">
-            <h3 className="text-sm font-medium text-navy-700">難度審判 (D Panel)</h3>
+            <h3 className="text-sm font-medium text-navy-700">難度審判（Dパネル）</h3>
           </div>
           {(["D1", "D2"] as JudgeRole[]).map((role) => {
             const judge = judges.find((j) => j.role === role);
@@ -100,7 +100,7 @@ export default function JudgesPage({
         {/* E Judges */}
         <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
           <div className="px-4 py-2 bg-navy-100">
-            <h3 className="text-sm font-medium text-navy-700">実施審判 (E Panel)</h3>
+            <h3 className="text-sm font-medium text-navy-700">実施審判（Eパネル）</h3>
           </div>
           {(["E1", "E2", "E3", "E4", "E5", "E6"] as JudgeRole[]).map((role) => {
             const judge = judges.find((j) => j.role === role);

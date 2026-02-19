@@ -15,7 +15,7 @@ export default function Header({ competitionName, competitionId }: HeaderProps) 
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <HighBarIcon className="w-8 h-8 text-accent-light" />
           <span className="text-lg font-bold tracking-tight hidden sm:inline">
-            Gym High Bar
+            鉄棒速報
           </span>
         </Link>
         {competitionName && (

@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gym High Bar Challenge Cup",
+  title: "鉄棒チャレンジカップ - リアルタイム採点速報",
   description: "体操競技（鉄棒）リアルタイム採点・速報システム",
 };
 

@@ -10,7 +10,7 @@ function CurrentPerformer({ perf }: { perf: PerformanceWithDetails }) {
   return (
     <div className="text-center">
       <div className="text-navy-400 text-sm sm:text-base mb-2 uppercase tracking-wider">
-        Now Performing
+        現在の演技
       </div>
       <div className="text-3xl sm:text-5xl font-bold text-white mb-2">
         {perf.athlete.name}
@@ -20,7 +20,7 @@ function CurrentPerformer({ perf }: { perf: PerformanceWithDetails }) {
       </div>
       {perf.dScore !== null && (
         <div className="mt-6 inline-block bg-navy-800 rounded-2xl px-8 py-4">
-          <div className="text-navy-400 text-sm mb-1">D Score</div>
+          <div className="text-navy-400 text-sm mb-1">Dスコア</div>
           <div className="font-mono text-4xl sm:text-6xl font-bold text-accent-light">
             {perf.dScore.toFixed(1)}
           </div>
@@ -37,7 +37,7 @@ function LatestResult({ perf, rank }: { perf: PerformanceWithDetails; rank: numb
   return (
     <div className="text-center">
       <div className="text-navy-400 text-sm sm:text-base mb-2 uppercase tracking-wider">
-        Latest Result
+        最新の結果
       </div>
       <div className="text-2xl sm:text-4xl font-bold text-white mb-1">
         {perf.athlete.name}
@@ -59,7 +59,7 @@ function LatestResult({ perf, rank }: { perf: PerformanceWithDetails; rank: numb
         </div>
         {perf.ndScore !== null && perf.ndScore > 0 && (
           <div>
-            <span className="text-navy-400">ND: </span>
+            <span className="text-navy-400">減点: </span>
             <span className="font-mono text-red-400">-{perf.ndScore.toFixed(1)}</span>
           </div>
         )}

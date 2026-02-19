@@ -76,13 +76,13 @@ export default function ResultRow({ performance, isExpanded, onToggle }: ResultR
         <div className="px-4 pb-4 pt-1 bg-navy-50/50">
           <div className="grid grid-cols-3 gap-3 text-center mb-3">
             <div>
-              <div className="text-xs text-navy-500 mb-1">D Score</div>
+              <div className="text-xs text-navy-500 mb-1">Dスコア</div>
               <div className="font-mono text-base font-semibold">
                 {dScore !== null ? dScore.toFixed(1) : "-"}
               </div>
             </div>
             <div>
-              <div className="text-xs text-navy-500 mb-1">E Score</div>
+              <div className="text-xs text-navy-500 mb-1">Eスコア</div>
               <div className="font-mono text-base font-semibold">
                 {eScore !== null ? eScore.toFixed(3) : "-"}
               </div>

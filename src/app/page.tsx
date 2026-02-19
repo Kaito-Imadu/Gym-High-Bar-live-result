@@ -21,7 +21,7 @@ export default function HomePage() {
         <div className="text-center mb-10">
           <HighBarIcon className="w-16 h-16 text-accent mx-auto mb-4" />
           <h1 className="text-2xl sm:text-3xl font-bold text-navy-900 mb-2">
-            Gym High Bar Challenge Cup
+            鉄棒チャレンジカップ
           </h1>
           <p className="text-navy-500">体操競技（鉄棒）リアルタイム採点・速報システム</p>
         </div>
