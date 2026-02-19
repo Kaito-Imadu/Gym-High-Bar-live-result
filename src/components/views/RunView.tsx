@@ -29,16 +29,16 @@ export default function RunView({ competitionId }: { competitionId: string }) {
   const [bonus, setBonus] = useState("0");
   const [editingPerfId, setEditingPerfId] = useState<string | null>(null);
   const [displayPerfId, setDisplayPerfId] = useState<string | null>(null);
-
-  // Get registered E judge roles
-  const eJudgeRoles = useMemo(() => {
+  const [eJudgeCount, setEJudgeCount] = useState<number>(() => {
     const panels = getJudgePanels(competitionId);
-    const roles = panels
-      .filter((p) => p.role.startsWith("E") && p.judgeName.trim())
-      .map((p) => p.role)
-      .sort();
-    return roles.length > 0 ? roles : ["E1" as JudgeRole]; // fallback to 1 E judge
-  }, [competitionId]);
+    const registered = panels.filter((p) => p.role.startsWith("E") && p.judgeName.trim()).length;
+    return registered > 0 ? registered : 3;
+  });
+
+  const eJudgeRoles = useMemo(() => {
+    const allE: JudgeRole[] = ["E1", "E2", "E3", "E4", "E5", "E6"];
+    return allE.slice(0, eJudgeCount);
+  }, [eJudgeCount]);
 
   const resetForm = useCallback(() => {
     setDScore("");
@@ -199,10 +199,18 @@ export default function RunView({ competitionId }: { competitionId: string }) {
 
           {/* E Scores - individual per judge */}
           <div className="mb-4">
-            <label className="block text-xs text-navy-600 font-medium mb-2">
-              Eスコア（{eJudgeRoles.length}名の審判）
-              {eJudgeRoles.length >= 4 && <span className="text-navy-400 ml-1">※最高・最低カット</span>}
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-navy-600 font-medium">
+                Eスコア（{eJudgeRoles.length}名）
+                {eJudgeRoles.length >= 4 && <span className="text-navy-400 ml-1">※最高・最低カット</span>}
+              </label>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-navy-400">E審判数:</span>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <button key={n} type="button" onClick={() => setEJudgeCount(n)} className={`w-7 h-7 rounded text-xs font-bold transition-colors ${eJudgeCount === n ? "bg-accent text-white" : "bg-navy-100 text-navy-600 hover:bg-navy-200"}`}>{n}</button>
+                ))}
+              </div>
+            </div>
             <div className={`grid gap-2 ${eJudgeRoles.length <= 3 ? "grid-cols-3" : eJudgeRoles.length <= 4 ? "grid-cols-4" : "grid-cols-3"}`}>
               {eJudgeRoles.map((role, i) => (
                 <div key={role}>
