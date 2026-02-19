@@ -3,18 +3,21 @@
 import { useState, useEffect } from "react";
 import { getAthletes, saveAthletes } from "@/lib/store";
 import { Athlete } from "@/types";
-import { Plus, UserPlus, X, Save, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, UserPlus, X, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function AthletesView({ competitionId }: { competitionId: string }) {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", affiliation: "", grade: "", bio: "" });
-  const [saved, setSaved] = useState(false);
-  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     setAthletes(getAthletes(competitionId));
   }, [competitionId]);
+
+  const persist = (updated: Athlete[]) => {
+    setAthletes(updated);
+    saveAthletes(competitionId, updated);
+  };
 
   const handleAdd = () => {
     if (!form.name.trim()) return;
@@ -27,18 +30,13 @@ export default function AthletesView({ competitionId }: { competitionId: string 
       bio: form.bio,
       startOrder: athletes.length + 1,
     };
-    setAthletes([...athletes, newAthlete]);
+    persist([...athletes, newAthlete]);
     setForm({ name: "", affiliation: "", grade: "", bio: "" });
     setShowForm(false);
-    setDirty(true);
-    setSaved(false);
   };
 
   const handleRemove = (id: string) => {
-    const updated = athletes.filter((a) => a.id !== id).map((a, i) => ({ ...a, startOrder: i + 1 }));
-    setAthletes(updated);
-    setDirty(true);
-    setSaved(false);
+    persist(athletes.filter((a) => a.id !== id).map((a, i) => ({ ...a, startOrder: i + 1 })));
   };
 
   const handleMove = (index: number, direction: -1 | 1) => {
@@ -46,43 +44,17 @@ export default function AthletesView({ competitionId }: { competitionId: string 
     if (newIndex < 0 || newIndex >= athletes.length) return;
     const updated = [...athletes];
     [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
-    setAthletes(updated.map((a, i) => ({ ...a, startOrder: i + 1 })));
-    setDirty(true);
-    setSaved(false);
-  };
-
-  const handleSave = () => {
-    saveAthletes(competitionId, athletes);
-    setSaved(true);
-    setDirty(false);
-    setTimeout(() => setSaved(false), 2000);
+    persist(updated.map((a, i) => ({ ...a, startOrder: i + 1 })));
   };
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-navy-900">選手登録</h1>
-        <div className="flex gap-2">
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-dark transition-colors">
-            <UserPlus className="w-4 h-4" /> 追加
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!dirty && !saved}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              saved ? "bg-green-600 text-white" : dirty ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-200 text-navy-400 cursor-not-allowed"
-            }`}
-          >
-            {saved ? <><Check className="w-4 h-4" /> 保存済み</> : <><Save className="w-4 h-4" /> 保存</>}
-          </button>
-        </div>
+        <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-dark transition-colors">
+          <UserPlus className="w-4 h-4" /> 追加
+        </button>
       </div>
-
-      {dirty && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-4 text-sm text-orange-700">
-          未保存の変更があります。「保存」ボタンを押してください。
-        </div>
-      )}
 
       {showForm && (
         <div className="bg-white rounded-xl border border-navy-200 p-4 mb-4 shadow-sm">

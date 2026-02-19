@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getJudgePanels, saveJudgePanels } from "@/lib/store";
 import { JudgePanel, JudgeRole } from "@/types";
-import { Save, Check } from "lucide-react";
 
 const roleDescriptions: Record<JudgeRole, string> = {
   D1: "難度審判（主任）", D2: "難度審判",
@@ -20,8 +19,7 @@ const sections: { title: string; roles: JudgeRole[] }[] = [
 
 export default function JudgesView({ competitionId }: { competitionId: string }) {
   const [judges, setJudges] = useState<JudgePanel[]>([]);
-  const [saved, setSaved] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const existing = getJudgePanels(competitionId);
@@ -33,35 +31,34 @@ export default function JudgesView({ competitionId }: { competitionId: string })
   }, [competitionId]);
 
   const updateJudgeName = (role: JudgeRole, name: string) => {
-    setJudges((prev) => prev.map((j) => (j.role === role ? { ...j, judgeName: name } : j)));
-    setDirty(true);
-    setSaved(false);
+    const updated = judges.map((j) => (j.role === role ? { ...j, judgeName: name } : j));
+    setJudges(updated);
+    // Debounce auto-save (500ms after last keystroke)
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveJudgePanels(competitionId, updated.filter((j) => j.judgeName.trim()));
+    }, 500);
   };
 
-  const handleSave = () => {
+  // Save on unmount if pending
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
+  // Also save on blur for immediate feedback
+  const handleBlur = () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     saveJudgePanels(competitionId, judges.filter((j) => j.judgeName.trim()));
-    setSaved(true);
-    setDirty(false);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-navy-900">審判登録</h1>
-        <button
-          onClick={handleSave}
-          disabled={!dirty && !saved}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            saved ? "bg-green-600 text-white" : dirty ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-200 text-navy-400 cursor-not-allowed"
-          }`}
-        >
-          {saved ? <><Check className="w-4 h-4" /> 保存済み</> : <><Save className="w-4 h-4" /> 保存</>}
-        </button>
+        <span className="text-xs text-navy-400">自動保存</span>
       </div>
-      {dirty && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-4 text-sm text-orange-700">未保存の変更があります。「保存」ボタンを押してください。</div>
-      )}
       <p className="text-sm text-navy-500 mb-4">使用する審判の名前を入力してください。空欄の役割は使用されません。</p>
       <div className="space-y-4">
         {sections.map((section) => (
@@ -73,7 +70,7 @@ export default function JudgesView({ competitionId }: { competitionId: string })
                 <div key={role} className="flex items-center gap-3 px-4 py-3 border-b border-navy-100 last:border-b-0">
                   <span className="w-8 text-sm font-mono font-bold text-accent">{role}</span>
                   <div className="flex-1">
-                    <input type="text" value={judge?.judgeName ?? ""} onChange={(e) => updateJudgeName(role, e.target.value)} placeholder={roleDescriptions[role]} className="w-full px-3 py-1.5 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                    <input type="text" value={judge?.judgeName ?? ""} onChange={(e) => updateJudgeName(role, e.target.value)} onBlur={handleBlur} placeholder={roleDescriptions[role]} className="w-full px-3 py-1.5 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
                   </div>
                 </div>
               );
