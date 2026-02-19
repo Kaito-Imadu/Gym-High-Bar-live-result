@@ -21,16 +21,18 @@ export function calculateEScore(eScores: number[]): number {
 }
 
 /**
- * Calculate final score: D-score + E-score - Neutral Deduction
+ * Calculate final score: D-score + E-score - Neutral Deduction + Bonus
  */
 export function calculateFinalScore(
   dScore: number | null,
   eScore: number | null,
-  ndScore: number | null
+  ndScore: number | null,
+  bonus?: number | null
 ): number | null {
   if (dScore === null || eScore === null) return null;
   const nd = ndScore ?? 0;
-  return round3(dScore + eScore - nd);
+  const b = bonus ?? 0;
+  return round3(dScore + eScore - nd + b);
 }
 
 /**

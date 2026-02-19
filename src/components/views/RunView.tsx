@@ -22,7 +22,7 @@ const statusLabels: Record<string, string> = { pending: "待機中", scoring: "�
 export default function RunView({ competitionId }: { competitionId: string }) {
   const [competition, setCompetition] = useState<Competition | undefined>();
   const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
-  const [confirmForm, setConfirmForm] = useState({ dScore: "", eScore: "", ndScore: "0" });
+  const [confirmForm, setConfirmForm] = useState({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
   const [editingPerfId, setEditingPerfId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
@@ -41,7 +41,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
     setEditingPerfId(null);
     setCurrentPerformance(competitionId, perfId);
     if (competition?.status !== "in_progress") updateCompetition(competitionId, { status: "in_progress" });
-    setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+    setConfirmForm({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
     reload();
   };
 
@@ -51,12 +51,13 @@ export default function RunView({ competitionId }: { competitionId: string }) {
       dScore: perf.dScore?.toString() ?? "",
       eScore: perf.eScore?.toString() ?? "",
       ndScore: perf.ndScore?.toString() ?? "0",
+      bonus: perf.bonus?.toString() ?? "0",
     });
   };
 
   const handleCancelEdit = () => {
     setEditingPerfId(null);
-    setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+    setConfirmForm({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
   };
 
   const handleConfirm = () => {
@@ -65,12 +66,13 @@ export default function RunView({ competitionId }: { competitionId: string }) {
     const d = parseFloat(confirmForm.dScore);
     const e = parseFloat(confirmForm.eScore);
     const nd = parseFloat(confirmForm.ndScore) || 0;
+    const b = parseFloat(confirmForm.bonus) || 0;
     if (isNaN(d) || isNaN(e)) return;
-    const final = calculateFinalScore(d, e, nd);
+    const final = calculateFinalScore(d, e, nd, b);
     if (final === null) return;
-    confirmPerformance(targetPerf.id, d, e, nd, final);
+    confirmPerformance(targetPerf.id, d, e, nd, final, b);
     recalcRanks(competitionId);
-    setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+    setConfirmForm({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
     setEditingPerfId(null);
     reload();
   };
@@ -88,7 +90,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
   }
 
   const previewScore = confirmForm.dScore && confirmForm.eScore
-    ? ((parseFloat(confirmForm.dScore) || 0) + (parseFloat(confirmForm.eScore) || 0) - (parseFloat(confirmForm.ndScore) || 0)).toFixed(3)
+    ? ((parseFloat(confirmForm.dScore) || 0) + (parseFloat(confirmForm.eScore) || 0) - (parseFloat(confirmForm.ndScore) || 0) + (parseFloat(confirmForm.bonus) || 0)).toFixed(3)
     : null;
 
   return (
@@ -115,7 +117,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
           </div>
           <div className="text-lg font-bold text-navy-900 mb-1">{(editingPerf ?? currentPerf)!.athlete.name}</div>
           <div className="text-sm text-navy-500 mb-4">{(editingPerf ?? currentPerf)!.athlete.affiliation}</div>
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
               <label className="block text-xs text-navy-600 font-medium mb-1">Dスコア</label>
               <input type="number" step="0.1" min="0" max="10" value={confirmForm.dScore} onChange={(e) => setConfirmForm({ ...confirmForm, dScore: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
@@ -125,8 +127,15 @@ export default function RunView({ competitionId }: { competitionId: string }) {
               <input type="number" step="0.05" min="0" max="10" value={confirmForm.eScore} onChange={(e) => setConfirmForm({ ...confirmForm, eScore: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.000" />
             </div>
             <div>
-              <label className="block text-xs text-navy-600 font-medium mb-1">ND</label>
+              <label className="block text-xs text-navy-600 font-medium mb-1">ND（減点）</label>
               <input type="number" step="0.1" min="0" max="5" value={confirmForm.ndScore} onChange={(e) => setConfirmForm({ ...confirmForm, ndScore: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
+            </div>
+            <div>
+              <label className="block text-xs text-navy-600 font-medium mb-1">加点ボーナス</label>
+              <div className="flex gap-2">
+                <input type="number" step="0.1" min="0" max="1" value={confirmForm.bonus} onChange={(e) => setConfirmForm({ ...confirmForm, bonus: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
+                <button type="button" onClick={() => setConfirmForm({ ...confirmForm, bonus: "0.1" })} className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${confirmForm.bonus === "0.1" ? "bg-green-600 text-white" : "bg-navy-100 hover:bg-navy-200 text-navy-700"}`}>+0.1</button>
+              </div>
             </div>
           </div>
           {previewScore && (

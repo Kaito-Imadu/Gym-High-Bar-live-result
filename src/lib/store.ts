@@ -133,6 +133,7 @@ export function initPerformances(competitionId: string) {
       dScore: null,
       eScore: null,
       ndScore: null,
+      bonus: null,
       finalScore: null,
       rank: null,
       isCurrent: false,
@@ -169,11 +170,12 @@ export function confirmPerformance(
   dScore: number,
   eScore: number,
   ndScore: number,
-  finalScore: number
+  finalScore: number,
+  bonus?: number
 ) {
   const all = load<Performance>(PERF_KEY).map((p) =>
     p.id === perfId
-      ? { ...p, status: "confirmed" as const, isCurrent: false, dScore, eScore, ndScore, finalScore }
+      ? { ...p, status: "confirmed" as const, isCurrent: false, dScore, eScore, ndScore, bonus: bonus ?? 0, finalScore }
       : p
   );
   save(PERF_KEY, all);

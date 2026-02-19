@@ -24,7 +24,7 @@ function getMedalColor(rank: number | null): string {
 }
 
 export default function ResultRow({ performance, isExpanded, onToggle }: ResultRowProps) {
-  const { athlete, status, dScore, eScore, ndScore, finalScore, rank, judgeScores } = performance;
+  const { athlete, status, dScore, eScore, ndScore, bonus, finalScore, rank, judgeScores } = performance;
   const isCurrent = performance.isCurrent;
 
   return (
@@ -74,7 +74,7 @@ export default function ResultRow({ performance, isExpanded, onToggle }: ResultR
       {/* Accordion detail */}
       {isExpanded && (
         <div className="px-4 pb-4 pt-1 bg-navy-50/50">
-          <div className="grid grid-cols-3 gap-3 text-center mb-3">
+          <div className={`grid gap-3 text-center mb-3 ${bonus && bonus > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
             <div>
               <div className="text-xs text-navy-500 mb-1">Dスコア</div>
               <div className="font-mono text-base font-semibold">
@@ -93,6 +93,14 @@ export default function ResultRow({ performance, isExpanded, onToggle }: ResultR
                 {ndScore !== null && ndScore > 0 ? `-${ndScore.toFixed(1)}` : ndScore !== null ? "0.0" : "-"}
               </div>
             </div>
+            {bonus !== null && bonus > 0 && (
+              <div>
+                <div className="text-xs text-navy-500 mb-1">加点</div>
+                <div className="font-mono text-base font-semibold text-green-600">
+                  +{bonus.toFixed(1)}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Judge score details */}

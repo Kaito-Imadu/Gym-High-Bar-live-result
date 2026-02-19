@@ -37,6 +37,9 @@ function LatestResult({ perf }: { perf: PerformanceWithDetails }) {
         {perf.ndScore !== null && perf.ndScore > 0 && (
           <div><span className="text-navy-400">減点: </span><span className="font-mono text-red-400">-{perf.ndScore.toFixed(1)}</span></div>
         )}
+        {perf.bonus !== null && perf.bonus > 0 && (
+          <div><span className="text-navy-400">加点: </span><span className="font-mono text-green-400">+{perf.bonus.toFixed(1)}</span></div>
+        )}
       </div>
       {perf.rank && <div className="mt-6 text-3xl text-gold font-bold">現在 {perf.rank}位</div>}
     </div>

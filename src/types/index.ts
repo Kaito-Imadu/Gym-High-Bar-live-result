@@ -36,6 +36,7 @@ export interface Performance {
   dScore: number | null;
   eScore: number | null;
   ndScore: number | null;
+  bonus: number | null;
   finalScore: number | null;
   rank: number | null;
   isCurrent: boolean;
