@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { competitionHref } from "@/lib/navigation";
 import {
   getCompetition, getPerformancesWithDetails, initPerformances,
   setCurrentPerformance, confirmPerformance, recalcRanks, updateCompetition, getAthletes,
-  setScoreboardDisplay, getScoreboardDisplay,
+  setScoreboardDisplay, getScoreboardDisplay, getJudgePanels,
 } from "@/lib/store";
-import { calculateFinalScore } from "@/lib/scoring";
-import { PerformanceWithDetails, Competition } from "@/types";
+import { calculateFinalScore, calculateEScore } from "@/lib/scoring";
+import { PerformanceWithDetails, Competition, JudgeRole } from "@/types";
 import { Play, CheckCircle, Clock, Loader2, RefreshCw, Pencil, X, Monitor, Trophy } from "lucide-react";
 import LiveBadge from "@/components/LiveBadge";
 
@@ -23,9 +23,29 @@ const statusLabels: Record<string, string> = { pending: "待機中", scoring: "�
 export default function RunView({ competitionId }: { competitionId: string }) {
   const [competition, setCompetition] = useState<Competition | undefined>();
   const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
-  const [confirmForm, setConfirmForm] = useState({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
+  const [dScore, setDScore] = useState("");
+  const [eScores, setEScores] = useState<string[]>([]);
+  const [ndScore, setNdScore] = useState("0");
+  const [bonus, setBonus] = useState("0");
   const [editingPerfId, setEditingPerfId] = useState<string | null>(null);
   const [displayPerfId, setDisplayPerfId] = useState<string | null>(null);
+
+  // Get registered E judge roles
+  const eJudgeRoles = useMemo(() => {
+    const panels = getJudgePanels(competitionId);
+    const roles = panels
+      .filter((p) => p.role.startsWith("E") && p.judgeName.trim())
+      .map((p) => p.role)
+      .sort();
+    return roles.length > 0 ? roles : ["E1" as JudgeRole]; // fallback to 1 E judge
+  }, [competitionId]);
+
+  const resetForm = useCallback(() => {
+    setDScore("");
+    setEScores(eJudgeRoles.map(() => ""));
+    setNdScore("0");
+    setBonus("0");
+  }, [eJudgeRoles]);
 
   const reload = useCallback(() => {
     setCompetition(getCompetition(competitionId));
@@ -37,46 +57,65 @@ export default function RunView({ competitionId }: { competitionId: string }) {
 
   useEffect(() => { reload(); }, [reload]);
 
+  // Initialize eScores array when eJudgeRoles changes
+  useEffect(() => {
+    setEScores((prev) => {
+      if (prev.length === eJudgeRoles.length) return prev;
+      return eJudgeRoles.map((_, i) => prev[i] ?? "");
+    });
+  }, [eJudgeRoles]);
+
   const sortedByOrder = [...performances].sort((a, b) => a.athlete.startOrder - b.athlete.startOrder);
   const currentPerf = performances.find((p) => p.isCurrent);
   const editingPerf = editingPerfId ? performances.find((p) => p.id === editingPerfId) : null;
+
+  // Calculate E-score from individual inputs
+  const eScoreValues = eScores.map((s) => parseFloat(s)).filter((n) => !isNaN(n));
+  const calculatedEScore = eScoreValues.length > 0 ? calculateEScore(eScoreValues) : null;
+  const allEFilled = eScoreValues.length === eJudgeRoles.length;
+
+  const handleUpdateEScore = (index: number, value: string) => {
+    setEScores((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
 
   const handleStartScoring = (perfId: string) => {
     setEditingPerfId(null);
     setCurrentPerformance(competitionId, perfId);
     if (competition?.status !== "in_progress") updateCompetition(competitionId, { status: "in_progress" });
-    setConfirmForm({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
+    resetForm();
     reload();
   };
 
   const handleStartEdit = (perf: PerformanceWithDetails) => {
     setEditingPerfId(perf.id);
-    setConfirmForm({
-      dScore: perf.dScore?.toString() ?? "",
-      eScore: perf.eScore?.toString() ?? "",
-      ndScore: perf.ndScore?.toString() ?? "0",
-      bonus: perf.bonus?.toString() ?? "0",
-    });
+    setDScore(perf.dScore?.toString() ?? "");
+    // When editing, set all E scores to the same value (eScore) since individual scores aren't stored
+    setEScores(eJudgeRoles.map(() => perf.eScore?.toString() ?? ""));
+    setNdScore(perf.ndScore?.toString() ?? "0");
+    setBonus(perf.bonus?.toString() ?? "0");
   };
 
   const handleCancelEdit = () => {
     setEditingPerfId(null);
-    setConfirmForm({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
+    resetForm();
   };
 
   const handleConfirm = () => {
     const targetPerf = editingPerf ?? currentPerf;
     if (!targetPerf) return;
-    const d = parseFloat(confirmForm.dScore);
-    const e = parseFloat(confirmForm.eScore);
-    const nd = parseFloat(confirmForm.ndScore) || 0;
-    const b = parseFloat(confirmForm.bonus) || 0;
-    if (isNaN(d) || isNaN(e)) return;
-    const final = calculateFinalScore(d, e, nd, b);
+    const d = parseFloat(dScore);
+    const nd = parseFloat(ndScore) || 0;
+    const b = parseFloat(bonus) || 0;
+    if (isNaN(d) || calculatedEScore === null) return;
+    const final = calculateFinalScore(d, calculatedEScore, nd, b);
     if (final === null) return;
-    confirmPerformance(targetPerf.id, d, e, nd, final, b);
+    confirmPerformance(targetPerf.id, d, calculatedEScore, nd, final, b);
     recalcRanks(competitionId);
-    setConfirmForm({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
+    resetForm();
     setEditingPerfId(null);
     reload();
   };
@@ -108,8 +147,11 @@ export default function RunView({ competitionId }: { competitionId: string }) {
     );
   }
 
-  const previewScore = confirmForm.dScore && confirmForm.eScore
-    ? ((parseFloat(confirmForm.dScore) || 0) + (parseFloat(confirmForm.eScore) || 0) - (parseFloat(confirmForm.ndScore) || 0) + (parseFloat(confirmForm.bonus) || 0)).toFixed(3)
+  const previewD = parseFloat(dScore) || 0;
+  const previewNd = parseFloat(ndScore) || 0;
+  const previewBonus = parseFloat(bonus) || 0;
+  const previewScore = dScore && calculatedEScore !== null
+    ? (previewD + calculatedEScore - previewNd + previewBonus).toFixed(3)
     : null;
 
   return (
@@ -148,34 +190,74 @@ export default function RunView({ competitionId }: { competitionId: string }) {
           </div>
           <div className="text-lg font-bold text-navy-900 mb-1">{(editingPerf ?? currentPerf)!.athlete.name}</div>
           <div className="text-sm text-navy-500 mb-4">{(editingPerf ?? currentPerf)!.athlete.affiliation}</div>
+
+          {/* D Score */}
+          <div className="mb-4">
+            <label className="block text-xs text-navy-600 font-medium mb-1">Dスコア</label>
+            <input type="number" step="0.1" min="0" max="10" value={dScore} onChange={(e) => setDScore(e.target.value)} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
+          </div>
+
+          {/* E Scores - individual per judge */}
+          <div className="mb-4">
+            <label className="block text-xs text-navy-600 font-medium mb-2">
+              Eスコア（{eJudgeRoles.length}名の審判）
+              {eJudgeRoles.length >= 4 && <span className="text-navy-400 ml-1">※最高・最低カット</span>}
+            </label>
+            <div className={`grid gap-2 ${eJudgeRoles.length <= 3 ? "grid-cols-3" : eJudgeRoles.length <= 4 ? "grid-cols-4" : "grid-cols-3"}`}>
+              {eJudgeRoles.map((role, i) => (
+                <div key={role}>
+                  <div className="text-center text-xs text-navy-400 mb-1 font-mono">{role}</div>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    max="10"
+                    value={eScores[i] ?? ""}
+                    onChange={(e) => handleUpdateEScore(i, e.target.value)}
+                    className="w-full px-2 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    placeholder="0.0"
+                  />
+                </div>
+              ))}
+            </div>
+            {calculatedEScore !== null && (
+              <div className="mt-2 text-center bg-navy-50 rounded-lg py-1.5">
+                <span className="text-xs text-navy-500">Eスコア平均: </span>
+                <span className="font-mono font-bold text-navy-900">{calculatedEScore.toFixed(3)}</span>
+                {!allEFilled && <span className="text-xs text-orange-500 ml-2">（{eScoreValues.length}/{eJudgeRoles.length}名入力済み）</span>}
+              </div>
+            )}
+          </div>
+
+          {/* ND & Bonus */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label className="block text-xs text-navy-600 font-medium mb-1">Dスコア</label>
-              <input type="number" step="0.1" min="0" max="10" value={confirmForm.dScore} onChange={(e) => setConfirmForm({ ...confirmForm, dScore: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
-            </div>
-            <div>
-              <label className="block text-xs text-navy-600 font-medium mb-1">Eスコア</label>
-              <input type="number" step="0.05" min="0" max="10" value={confirmForm.eScore} onChange={(e) => setConfirmForm({ ...confirmForm, eScore: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.000" />
-            </div>
-            <div>
               <label className="block text-xs text-navy-600 font-medium mb-1">ND（減点）</label>
-              <input type="number" step="0.1" min="0" max="5" value={confirmForm.ndScore} onChange={(e) => setConfirmForm({ ...confirmForm, ndScore: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
+              <input type="number" step="0.1" min="0" max="5" value={ndScore} onChange={(e) => setNdScore(e.target.value)} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
             </div>
             <div>
               <label className="block text-xs text-navy-600 font-medium mb-1">加点ボーナス</label>
               <div className="flex gap-2">
-                <input type="number" step="0.1" min="0" max="1" value={confirmForm.bonus} onChange={(e) => setConfirmForm({ ...confirmForm, bonus: e.target.value })} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
-                <button type="button" onClick={() => setConfirmForm({ ...confirmForm, bonus: "0.1" })} className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${confirmForm.bonus === "0.1" ? "bg-green-600 text-white" : "bg-navy-100 hover:bg-navy-200 text-navy-700"}`}>+0.1</button>
+                <input type="number" step="0.1" min="0" max="1" value={bonus} onChange={(e) => setBonus(e.target.value)} className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.0" />
+                <button type="button" onClick={() => setBonus("0.1")} className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${bonus === "0.1" ? "bg-green-600 text-white" : "bg-navy-100 hover:bg-navy-200 text-navy-700"}`}>+0.1</button>
               </div>
             </div>
           </div>
+
+          {/* Preview */}
           {previewScore && (
             <div className="bg-white rounded-lg p-3 mb-4 text-center">
               <div className="text-xs text-navy-500 mb-1">最終得点プレビュー</div>
               <div className="font-mono text-3xl font-bold text-navy-900">{previewScore}</div>
+              <div className="text-xs text-navy-400 mt-1">
+                D {previewD.toFixed(1)} + E {calculatedEScore!.toFixed(3)}
+                {previewNd > 0 && ` - ND ${previewNd.toFixed(1)}`}
+                {previewBonus > 0 && ` + 加点 ${previewBonus.toFixed(1)}`}
+              </div>
             </div>
           )}
-          <button onClick={handleConfirm} disabled={!confirmForm.dScore || !confirmForm.eScore} className={`w-full flex items-center justify-center gap-2 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${editingPerf ? "bg-orange-500 hover:bg-orange-600" : "bg-green-600 hover:bg-green-700"}`}>
+
+          <button onClick={handleConfirm} disabled={!dScore || calculatedEScore === null} className={`w-full flex items-center justify-center gap-2 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${editingPerf ? "bg-orange-500 hover:bg-orange-600" : "bg-green-600 hover:bg-green-700"}`}>
             <CheckCircle className="w-4 h-4" /> {editingPerf ? "修正を保存" : "スコア確定"}
           </button>
         </div>
