@@ -86,7 +86,7 @@ function RankingView({ performances }: { performances: PerformanceWithDetails[] 
   );
 }
 
-type LocalView = "auto" | "ranking" | "athlete";
+type LocalView = "auto" | "live" | "ranking" | "athlete";
 
 export default function ScoreboardView({ competitionId }: { competitionId: string }) {
   const [competition, setCompetition] = useState<Competition | undefined>();
@@ -125,6 +125,10 @@ export default function ScoreboardView({ competitionId }: { competitionId: strin
 
   const renderContent = () => {
     // Local view takes precedence when manually selected
+    if (localView === "live") {
+      if (currentPerf) return <CurrentPerformer perf={currentPerf} />;
+      return <div className="text-center text-navy-400 text-2xl">演技者を待っています...</div>;
+    }
     if (localView === "ranking" && confirmedPerfs.length > 0) {
       return <RankingView performances={performances} />;
     }
@@ -163,6 +167,12 @@ export default function ScoreboardView({ competitionId }: { competitionId: strin
 
       {/* View toggle bar */}
       <div className="flex items-center justify-center gap-2 px-4 py-2 bg-black/20">
+        <button
+          onClick={() => { setLocalView("live"); }}
+          className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${localView === "live" ? "bg-red-600 text-white" : "bg-navy-800 text-navy-300 hover:bg-navy-700"}`}
+        >
+          採点中
+        </button>
         <button
           onClick={() => { setLocalView("auto"); }}
           className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${localView === "auto" ? "bg-accent text-white" : "bg-navy-800 text-navy-300 hover:bg-navy-700"}`}
