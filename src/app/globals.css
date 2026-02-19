@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy-900: #0f172a;
+  --color-navy-800: #1e293b;
+  --color-navy-700: #334155;
+  --color-navy-600: #475569;
+  --color-navy-500: #64748b;
+  --color-navy-400: #94a3b8;
+  --color-navy-300: #cbd5e1;
+  --color-navy-200: #e2e8f0;
+  --color-navy-100: #f1f5f9;
+  --color-navy-50: #f8fafc;
+  --color-accent: #3b82f6;
+  --color-accent-light: #60a5fa;
+  --color-accent-dark: #2563eb;
+  --color-gold: #f59e0b;
+  --color-silver: #9ca3af;
+  --color-bronze: #d97706;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-navy-50);
+  color: var(--color-navy-900);
+  font-family: var(--font-sans);
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-live-pulse {
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes score-flash {
+  0% { background-color: rgba(59, 130, 246, 0.2); }
+  100% { background-color: transparent; }
+}
+
+.animate-score-flash {
+  animation: score-flash 1s ease-out;
+}
