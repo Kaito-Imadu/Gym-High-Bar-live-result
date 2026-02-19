@@ -227,6 +227,35 @@ export function submitJudgeScore(performanceId: string, judgePanelId: string, ro
   save(JS_KEY, all);
 }
 
+// --- Scoreboard display control ---
+const SB_KEY = "ghb_scoreboard_display";
+
+export type ScoreboardMode = "auto" | "performance" | "ranking";
+
+interface ScoreboardDisplay {
+  competitionId: string;
+  mode: ScoreboardMode;
+  performanceId?: string;
+}
+
+export function setScoreboardDisplay(competitionId: string, mode: ScoreboardMode, performanceId?: string) {
+  if (typeof window === "undefined") return;
+  const data: ScoreboardDisplay = { competitionId, mode, performanceId };
+  localStorage.setItem(SB_KEY, JSON.stringify(data));
+}
+
+export function getScoreboardDisplay(competitionId: string): ScoreboardDisplay {
+  if (typeof window === "undefined") return { competitionId, mode: "auto" };
+  try {
+    const raw = localStorage.getItem(SB_KEY);
+    if (raw) {
+      const data = JSON.parse(raw) as ScoreboardDisplay;
+      if (data.competitionId === competitionId) return data;
+    }
+  } catch {}
+  return { competitionId, mode: "auto" };
+}
+
 // --- Combined queries ---
 
 export function getPerformancesWithDetails(competitionId: string): PerformanceWithDetails[] {

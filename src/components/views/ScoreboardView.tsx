@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPerformancesWithDetails, getCompetition, initPerformances } from "@/lib/store";
+import { getPerformancesWithDetails, getCompetition, initPerformances, getScoreboardDisplay, ScoreboardMode } from "@/lib/store";
 import LiveBadge from "@/components/LiveBadge";
 import HighBarIcon from "@/components/HighBarIcon";
 import { PerformanceWithDetails, Competition } from "@/types";
@@ -75,12 +75,17 @@ function RankingView({ performances }: { performances: PerformanceWithDetails[] 
 export default function ScoreboardView({ competitionId }: { competitionId: string }) {
   const [competition, setCompetition] = useState<Competition | undefined>();
   const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
+  const [displayMode, setDisplayMode] = useState<ScoreboardMode>("auto");
+  const [displayPerfId, setDisplayPerfId] = useState<string | undefined>();
 
   useEffect(() => {
     const reload = () => {
       setCompetition(getCompetition(competitionId));
       initPerformances(competitionId);
       setPerformances(getPerformancesWithDetails(competitionId));
+      const sbDisplay = getScoreboardDisplay(competitionId);
+      setDisplayMode(sbDisplay.mode);
+      setDisplayPerfId(sbDisplay.performanceId);
     };
     reload();
     const interval = setInterval(reload, 2000);
@@ -90,7 +95,28 @@ export default function ScoreboardView({ competitionId }: { competitionId: strin
   const currentPerf = performances.find((p) => p.isCurrent);
   const confirmedPerfs = performances.filter((p) => p.status === "confirmed" && p.rank !== null).sort((a, b) => a.rank! - b.rank!);
   const latestConfirmed = performances.filter((p) => p.status === "confirmed").sort((a, b) => b.athlete.startOrder - a.athlete.startOrder)[0];
-  const showRanking = !currentPerf && confirmedPerfs.length > 1;
+
+  // Determine what to show based on display mode
+  const targetPerf = displayMode === "performance" && displayPerfId
+    ? performances.find((p) => p.id === displayPerfId)
+    : null;
+  const forceRanking = displayMode === "ranking";
+
+  const renderContent = () => {
+    if (targetPerf && targetPerf.status === "confirmed") {
+      return <LatestResult perf={targetPerf} />;
+    }
+    if (forceRanking && confirmedPerfs.length > 0) {
+      return <RankingView performances={performances} />;
+    }
+    // Auto mode
+    if (currentPerf) return <CurrentPerformer perf={currentPerf} />;
+    if (confirmedPerfs.length > 1) return <RankingView performances={performances} />;
+    if (latestConfirmed) return <LatestResult perf={latestConfirmed} />;
+    return <div className="text-center text-navy-400 text-2xl">競技開始をお待ちください</div>;
+  };
+
+  const showBottomBar = !forceRanking && (targetPerf || currentPerf || latestConfirmed) && confirmedPerfs.length > 0;
 
   return (
     <div className="min-h-screen bg-navy-900 flex flex-col">
@@ -102,9 +128,9 @@ export default function ScoreboardView({ competitionId }: { competitionId: strin
         {competition?.status === "in_progress" && <LiveBadge />}
       </div>
       <div className="flex-1 flex items-center justify-center px-4 py-8">
-        {currentPerf ? <CurrentPerformer perf={currentPerf} /> : showRanking ? <RankingView performances={performances} /> : latestConfirmed ? <LatestResult perf={latestConfirmed} /> : <div className="text-center text-navy-400 text-2xl">競技開始をお待ちください</div>}
+        {renderContent()}
       </div>
-      {(currentPerf || (latestConfirmed && !showRanking)) && confirmedPerfs.length > 0 && (
+      {showBottomBar && (
         <div className="bg-black/30 px-4 py-3">
           <div className="flex gap-4 overflow-x-auto max-w-5xl mx-auto">
             {confirmedPerfs.slice(0, 6).map((p) => (

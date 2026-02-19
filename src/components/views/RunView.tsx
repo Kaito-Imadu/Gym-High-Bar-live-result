@@ -5,10 +5,11 @@ import { competitionHref } from "@/lib/navigation";
 import {
   getCompetition, getPerformancesWithDetails, initPerformances,
   setCurrentPerformance, confirmPerformance, recalcRanks, updateCompetition, getAthletes,
+  setScoreboardDisplay, getScoreboardDisplay,
 } from "@/lib/store";
 import { calculateFinalScore } from "@/lib/scoring";
 import { PerformanceWithDetails, Competition } from "@/types";
-import { Play, CheckCircle, Clock, Loader2, RefreshCw, Pencil, X } from "lucide-react";
+import { Play, CheckCircle, Clock, Loader2, RefreshCw, Pencil, X, Monitor, Trophy } from "lucide-react";
 import LiveBadge from "@/components/LiveBadge";
 
 function StatusIcon({ status }: { status: string }) {
@@ -24,11 +25,14 @@ export default function RunView({ competitionId }: { competitionId: string }) {
   const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
   const [confirmForm, setConfirmForm] = useState({ dScore: "", eScore: "", ndScore: "0", bonus: "0" });
   const [editingPerfId, setEditingPerfId] = useState<string | null>(null);
+  const [displayPerfId, setDisplayPerfId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setCompetition(getCompetition(competitionId));
     initPerformances(competitionId);
     setPerformances(getPerformancesWithDetails(competitionId));
+    const sbDisplay = getScoreboardDisplay(competitionId);
+    setDisplayPerfId(sbDisplay.mode === "performance" ? (sbDisplay.performanceId ?? null) : null);
   }, [competitionId]);
 
   useEffect(() => { reload(); }, [reload]);
@@ -77,6 +81,21 @@ export default function RunView({ competitionId }: { competitionId: string }) {
     reload();
   };
 
+  const handleShowOnScoreboard = (perfId: string) => {
+    setScoreboardDisplay(competitionId, "performance", perfId);
+    setDisplayPerfId(perfId);
+  };
+
+  const handleShowRanking = () => {
+    setScoreboardDisplay(competitionId, "ranking");
+    setDisplayPerfId(null);
+  };
+
+  const handleShowAuto = () => {
+    setScoreboardDisplay(competitionId, "auto");
+    setDisplayPerfId(null);
+  };
+
   if (getAthletes(competitionId).length === 0) {
     return (
       <main className="max-w-2xl mx-auto px-4 py-6">
@@ -101,6 +120,18 @@ export default function RunView({ competitionId }: { competitionId: string }) {
           {competition?.status === "in_progress" && <LiveBadge />}
           <button onClick={reload} className="p-2 text-navy-400 hover:text-navy-600"><RefreshCw className="w-4 h-4" /></button>
         </div>
+      </div>
+
+      {/* Scoreboard control */}
+      <div className="bg-navy-900 rounded-xl p-3 mb-6 flex items-center gap-2 flex-wrap">
+        <Monitor className="w-4 h-4 text-navy-400 shrink-0" />
+        <span className="text-xs text-navy-400 shrink-0">掲示板:</span>
+        <button onClick={handleShowAuto} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${!displayPerfId && getScoreboardDisplay(competitionId).mode !== "ranking" ? "bg-accent text-white" : "bg-navy-800 text-navy-300 hover:bg-navy-700"}`}>
+          自動
+        </button>
+        <button onClick={handleShowRanking} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${getScoreboardDisplay(competitionId).mode === "ranking" ? "bg-accent text-white" : "bg-navy-800 text-navy-300 hover:bg-navy-700"}`}>
+          <Trophy className="w-3 h-3" /> 順位表
+        </button>
       </div>
 
       {(currentPerf || editingPerf) && (
@@ -176,9 +207,14 @@ export default function RunView({ competitionId }: { competitionId: string }) {
               </button>
             )}
             {perf.status === "confirmed" && (
-              <button onClick={() => handleStartEdit(perf)} className="flex items-center gap-1 px-2 py-1.5 text-navy-400 hover:text-orange-500 transition-colors" title="得点修正">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
+              <>
+                <button onClick={() => handleShowOnScoreboard(perf.id)} className={`flex items-center gap-1 px-2 py-1.5 transition-colors ${displayPerfId === perf.id ? "text-accent" : "text-navy-300 hover:text-accent"}`} title="掲示板に表示">
+                  <Monitor className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleStartEdit(perf)} className="flex items-center gap-1 px-2 py-1.5 text-navy-400 hover:text-orange-500 transition-colors" title="得点修正">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </>
             )}
           </div>
         ))}
