@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getAthletes, saveAthletes } from "@/lib/store";
 import { Athlete } from "@/types";
-import { Plus, UserPlus, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, UserPlus, X, ArrowUp, ArrowDown, Shuffle } from "lucide-react";
 
 export default function AthletesView({ competitionId }: { competitionId: string }) {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -47,13 +47,30 @@ export default function AthletesView({ competitionId }: { competitionId: string 
     persist(updated.map((a, i) => ({ ...a, startOrder: i + 1 })));
   };
 
+  const handleShuffle = () => {
+    if (athletes.length < 2) return;
+    const shuffled = [...athletes];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    persist(shuffled.map((a, i) => ({ ...a, startOrder: i + 1 })));
+  };
+
   return (
     <main className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-navy-900">選手登録</h1>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-dark transition-colors">
-          <UserPlus className="w-4 h-4" /> 追加
-        </button>
+        <div className="flex gap-2">
+          {athletes.length >= 2 && (
+            <button onClick={handleShuffle} className="flex items-center gap-1.5 px-3 py-2 bg-navy-100 text-navy-700 rounded-lg text-sm font-medium hover:bg-navy-200 transition-colors">
+              <Shuffle className="w-4 h-4" /> シャッフル
+            </button>
+          )}
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-dark transition-colors">
+            <UserPlus className="w-4 h-4" /> 追加
+          </button>
+        </div>
       </div>
 
       {showForm && (
