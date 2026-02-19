@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import Header from "@/components/Header";
 import HighBarIcon from "@/components/HighBarIcon";
 import { getCompetitions, createCompetition, deleteCompetition } from "@/lib/store";
+import { competitionHref } from "@/lib/navigation";
 import { Competition } from "@/types";
 import { Calendar, MapPin, ChevronRight, Plus, Trash2, X, Link as LinkIcon, Copy, Check } from "lucide-react";
 
@@ -43,14 +43,9 @@ export default function HomePage() {
     setCompetitions(getCompetitions());
   };
 
-  const getBaseUrl = () => {
-    if (typeof window === "undefined") return "";
-    return window.location.origin + (window.location.pathname.replace(/\/$/, ""));
-  };
-
-  const copyLink = (path: string, compId: string) => {
-    const url = `${getBaseUrl()}${path}`;
-    navigator.clipboard.writeText(url);
+  const copyLink = (segments: string, compId: string) => {
+    const fullUrl = `${window.location.origin}${competitionHref(segments)}`;
+    navigator.clipboard.writeText(fullUrl);
     setCopiedId(compId);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -178,26 +173,26 @@ export default function HomePage() {
 
                 {/* Action links */}
                 <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-navy-100">
-                  <Link
-                    href={`/competition/${comp.id}/admin`}
+                  <a
+                    href={competitionHref(`${comp.id}/admin`)}
                     className="px-3 py-1.5 bg-navy-900 text-white rounded-lg text-xs font-medium hover:bg-navy-800 transition-colors"
                   >
                     管理画面
-                  </Link>
-                  <Link
-                    href={`/competition/${comp.id}/results`}
+                  </a>
+                  <a
+                    href={competitionHref(`${comp.id}/results`)}
                     className="px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-dark transition-colors"
                   >
                     成績速報
-                  </Link>
-                  <Link
-                    href={`/competition/${comp.id}/scoreboard`}
+                  </a>
+                  <a
+                    href={competitionHref(`${comp.id}/scoreboard`)}
                     className="px-3 py-1.5 bg-navy-700 text-white rounded-lg text-xs font-medium hover:bg-navy-600 transition-colors"
                   >
                     掲示板
-                  </Link>
+                  </a>
                   <button
-                    onClick={() => copyLink(`/competition/${comp.id}/results`, comp.id)}
+                    onClick={() => copyLink(`${comp.id}/results`, comp.id)}
                     className="flex items-center gap-1 px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg text-xs font-medium hover:bg-navy-200 transition-colors"
                   >
                     {copiedId === comp.id ? (

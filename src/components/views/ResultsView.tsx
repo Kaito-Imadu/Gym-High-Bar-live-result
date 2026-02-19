@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import ResultsTable from "@/components/ResultsTable";
+import { competitionHref } from "@/lib/navigation";
 import { getPerformancesWithDetails, getCompetition } from "@/lib/store";
 import { PerformanceWithDetails, Competition } from "@/types";
 import { Monitor, RefreshCw } from "lucide-react";
@@ -27,9 +27,9 @@ export default function ResultsView({ competitionId }: { competitionId: string }
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
       <div className="flex gap-2 mb-4">
-        <Link href={`/competition/${competitionId}/scoreboard`} className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-900 text-white rounded-lg text-xs font-medium hover:bg-navy-800 transition-colors whitespace-nowrap">
+        <a href={competitionHref(`${competitionId}/scoreboard`)} className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-900 text-white rounded-lg text-xs font-medium hover:bg-navy-800 transition-colors whitespace-nowrap">
           <Monitor className="w-3.5 h-3.5" /> 掲示板モード
-        </Link>
+        </a>
         <button onClick={reload} className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-100 text-navy-600 rounded-lg text-xs font-medium hover:bg-navy-200 transition-colors">
           <RefreshCw className="w-3.5 h-3.5" /> 更新
         </button>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { getCompetition, getAthletes, getJudgePanels, getPerformances, updateCompetition } from "@/lib/store";
+import { competitionHref } from "@/lib/navigation";
 import { Competition } from "@/types";
 import { Users, Clipboard, Play, ChevronRight, Monitor, BarChart3, Copy, Check, Link as LinkIcon } from "lucide-react";
 
@@ -29,30 +29,22 @@ export default function AdminView({ competitionId }: { competitionId: string }) 
     setCompetition(getCompetition(competitionId));
   };
 
-  const getBaseUrl = () => {
-    if (typeof window === "undefined") return "";
-    const origin = window.location.origin;
-    const basePath = window.location.pathname.split("/competition")[0];
-    return origin + basePath;
-  };
-
-  const copyLink = (path: string, key: string) => {
-    navigator.clipboard.writeText(`${getBaseUrl()}${path}`);
+  const copyLink = (segments: string, key: string) => {
+    const url = `${window.location.origin}${competitionHref(segments)}`;
+    navigator.clipboard.writeText(url);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const base = `/competition/${competitionId}`;
-
   const menuItems = [
-    { href: `${base}/admin/athletes`, icon: Users, title: "選手登録", description: `${athleteCount}名 登録済み` },
-    { href: `${base}/admin/judges`, icon: Clipboard, title: "審判登録", description: `${judgeCount}名 設定済み` },
-    { href: `${base}/admin/run`, icon: Play, title: "競技進行", description: perfStats.total > 0 ? `${perfStats.confirmed}/${perfStats.total} 完了` : "選手登録後に利用可能" },
+    { href: competitionHref(`${competitionId}/admin/athletes`), icon: Users, title: "選手登録", description: `${athleteCount}名 登録済み` },
+    { href: competitionHref(`${competitionId}/admin/judges`), icon: Clipboard, title: "審判登録", description: `${judgeCount}名 設定済み` },
+    { href: competitionHref(`${competitionId}/admin/run`), icon: Play, title: "競技進行", description: perfStats.total > 0 ? `${perfStats.confirmed}/${perfStats.total} 完了` : "選手登録後に利用可能" },
   ];
 
   const shareLinks = [
-    { path: `/competition/${competitionId}/results`, label: "成績速報ページ", icon: BarChart3, key: "results" },
-    { path: `/competition/${competitionId}/scoreboard`, label: "掲示板モード", icon: Monitor, key: "scoreboard" },
+    { segments: `${competitionId}/results`, label: "成績速報ページ", icon: BarChart3, key: "results" },
+    { segments: `${competitionId}/scoreboard`, label: "掲示板モード", icon: Monitor, key: "scoreboard" },
   ];
 
   return (
@@ -103,7 +95,7 @@ export default function AdminView({ competitionId }: { competitionId: string }) 
       {/* Menu */}
       <div className="space-y-3 mb-6">
         {menuItems.map((item) => (
-          <Link key={item.href} href={item.href} className="flex items-center gap-3 bg-white rounded-xl border border-navy-200 p-4 hover:border-accent hover:shadow-sm transition-all group">
+          <a key={item.href} href={item.href} className="flex items-center gap-3 bg-white rounded-xl border border-navy-200 p-4 hover:border-accent hover:shadow-sm transition-all group">
             <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
               <item.icon className="w-5 h-5 text-accent" />
             </div>
@@ -112,7 +104,7 @@ export default function AdminView({ competitionId }: { competitionId: string }) 
               <div className="text-sm text-navy-500">{item.description}</div>
             </div>
             <ChevronRight className="w-5 h-5 text-navy-400 group-hover:text-accent" />
-          </Link>
+          </a>
         ))}
       </div>
 
@@ -129,7 +121,7 @@ export default function AdminView({ competitionId }: { competitionId: string }) 
               <link.icon className="w-4 h-4 text-navy-500" />
               <span className="flex-1 text-sm text-navy-700">{link.label}</span>
               <button
-                onClick={() => copyLink(link.path, link.key)}
+                onClick={() => copyLink(link.segments, link.key)}
                 className="flex items-center gap-1 px-3 py-1 bg-white border border-navy-200 rounded text-xs font-medium text-navy-600 hover:bg-navy-100 transition-colors"
               >
                 {copiedKey === link.key ? <><Check className="w-3 h-3 text-green-600" /> コピー済み</> : <><Copy className="w-3 h-3" /> URLをコピー</>}

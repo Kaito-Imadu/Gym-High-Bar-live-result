@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import HighBarIcon from "./HighBarIcon";
+import { competitionHref } from "@/lib/navigation";
 
 interface HeaderProps {
   competitionName?: string;
@@ -22,12 +23,12 @@ export default function Header({ competitionName, competitionId }: HeaderProps) 
           <>
             <span className="text-navy-400">/</span>
             {competitionId ? (
-              <Link
-                href={`/competition/${competitionId}/results`}
+              <a
+                href={competitionHref(`${competitionId}/results`)}
                 className="text-sm sm:text-base font-medium text-navy-200 hover:text-white transition-colors truncate"
               >
                 {competitionName}
-              </Link>
+              </a>
             ) : (
               <span className="text-sm sm:text-base font-medium text-navy-200 truncate">
                 {competitionName}

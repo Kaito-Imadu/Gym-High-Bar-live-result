@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { competitionHref } from "@/lib/navigation";
 import {
   getCompetition, getPerformancesWithDetails, initPerformances,
   setCurrentPerformance, confirmPerformance, recalcRanks, updateCompetition, getAthletes,
@@ -62,7 +62,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
         <h1 className="text-xl font-bold text-navy-900 mb-4">競技進行管理</h1>
         <div className="bg-navy-50 rounded-xl p-8 text-center text-navy-500">
           <p className="mb-2">先に選手を登録してください</p>
-          <Link href={`/competition/${competitionId}/admin/athletes`} className="text-accent hover:underline text-sm">選手登録ページへ</Link>
+          <a href={competitionHref(`${competitionId}/admin/athletes`)} className="text-accent hover:underline text-sm">選手登録ページへ</a>
         </div>
       </main>
     );
