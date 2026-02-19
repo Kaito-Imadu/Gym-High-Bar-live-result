@@ -4,20 +4,31 @@
   <meta charset="utf-8">
   <title>リダイレクト中...</title>
   <script>
-    // GitHub Pages SPA redirect
-    // Converts the path to a query string so the SPA can handle it
-    var pathSegmentsToKeep = 1; // Keep /Gym-High-Bar-live-result
-    var l = window.location;
-    l.replace(
-      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
-      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
-      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-      l.hash
-    );
+    // GitHub Pages SPA fallback
+    // /Gym-High-Bar-live-result/competition/xxx/admin
+    // -> /Gym-High-Bar-live-result/competition/?p=xxx/admin
+    (function() {
+      var loc = window.location;
+      var path = loc.pathname;
+      // Find the /competition/ part and split
+      var compIdx = path.indexOf('/competition/');
+      if (compIdx >= 0) {
+        var basePath = path.substring(0, compIdx);
+        var afterComp = path.substring(compIdx + '/competition/'.length);
+        // Remove trailing slash
+        if (afterComp.endsWith('/')) afterComp = afterComp.slice(0, -1);
+        var newUrl = loc.protocol + '//' + loc.host + basePath + '/competition/?p=' +
+          encodeURIComponent(afterComp) + loc.hash;
+        loc.replace(newUrl);
+      } else {
+        // Not a competition path, go home
+        var base = path.split('/').slice(0, 2).join('/');
+        loc.replace(loc.protocol + '//' + loc.host + base + '/');
+      }
+    })();
   </script>
 </head>
 <body>
-  リダイレクト中...
+  <p style="text-align:center;margin-top:40px;color:#666;">リダイレクト中...</p>
 </body>
 </html>
