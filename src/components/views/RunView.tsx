@@ -8,7 +8,7 @@ import {
 } from "@/lib/store";
 import { calculateFinalScore } from "@/lib/scoring";
 import { PerformanceWithDetails, Competition } from "@/types";
-import { Play, CheckCircle, Clock, Loader2, RefreshCw } from "lucide-react";
+import { Play, CheckCircle, Clock, Loader2, RefreshCw, Pencil, X } from "lucide-react";
 import LiveBadge from "@/components/LiveBadge";
 
 function StatusIcon({ status }: { status: string }) {
@@ -23,6 +23,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
   const [competition, setCompetition] = useState<Competition | undefined>();
   const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
   const [confirmForm, setConfirmForm] = useState({ dScore: "", eScore: "", ndScore: "0" });
+  const [editingPerfId, setEditingPerfId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setCompetition(getCompetition(competitionId));
@@ -34,25 +35,43 @@ export default function RunView({ competitionId }: { competitionId: string }) {
 
   const sortedByOrder = [...performances].sort((a, b) => a.athlete.startOrder - b.athlete.startOrder);
   const currentPerf = performances.find((p) => p.isCurrent);
+  const editingPerf = editingPerfId ? performances.find((p) => p.id === editingPerfId) : null;
 
   const handleStartScoring = (perfId: string) => {
+    setEditingPerfId(null);
     setCurrentPerformance(competitionId, perfId);
     if (competition?.status !== "in_progress") updateCompetition(competitionId, { status: "in_progress" });
     setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
     reload();
   };
 
+  const handleStartEdit = (perf: PerformanceWithDetails) => {
+    setEditingPerfId(perf.id);
+    setConfirmForm({
+      dScore: perf.dScore?.toString() ?? "",
+      eScore: perf.eScore?.toString() ?? "",
+      ndScore: perf.ndScore?.toString() ?? "0",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPerfId(null);
+    setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+  };
+
   const handleConfirm = () => {
-    if (!currentPerf) return;
+    const targetPerf = editingPerf ?? currentPerf;
+    if (!targetPerf) return;
     const d = parseFloat(confirmForm.dScore);
     const e = parseFloat(confirmForm.eScore);
     const nd = parseFloat(confirmForm.ndScore) || 0;
     if (isNaN(d) || isNaN(e)) return;
     const final = calculateFinalScore(d, e, nd);
     if (final === null) return;
-    confirmPerformance(currentPerf.id, d, e, nd, final);
+    confirmPerformance(targetPerf.id, d, e, nd, final);
     recalcRanks(competitionId);
     setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+    setEditingPerfId(null);
     reload();
   };
 
@@ -82,11 +101,20 @@ export default function RunView({ competitionId }: { competitionId: string }) {
         </div>
       </div>
 
-      {currentPerf && (
-        <div className="bg-accent/5 border-2 border-accent rounded-xl p-4 mb-6">
-          <div className="text-xs text-accent font-medium uppercase tracking-wider mb-1">現在の演技者</div>
-          <div className="text-lg font-bold text-navy-900 mb-1">{currentPerf.athlete.name}</div>
-          <div className="text-sm text-navy-500 mb-4">{currentPerf.athlete.affiliation}</div>
+      {(currentPerf || editingPerf) && (
+        <div className={`border-2 rounded-xl p-4 mb-6 ${editingPerf ? "bg-orange-50 border-orange-400" : "bg-accent/5 border-accent"}`}>
+          <div className="flex items-center justify-between mb-1">
+            <div className={`text-xs font-medium uppercase tracking-wider ${editingPerf ? "text-orange-600" : "text-accent"}`}>
+              {editingPerf ? "得点修正" : "現在の演技者"}
+            </div>
+            {editingPerf && (
+              <button onClick={handleCancelEdit} className="text-navy-400 hover:text-navy-600">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="text-lg font-bold text-navy-900 mb-1">{(editingPerf ?? currentPerf)!.athlete.name}</div>
+          <div className="text-sm text-navy-500 mb-4">{(editingPerf ?? currentPerf)!.athlete.affiliation}</div>
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div>
               <label className="block text-xs text-navy-600 font-medium mb-1">Dスコア</label>
@@ -107,8 +135,8 @@ export default function RunView({ competitionId }: { competitionId: string }) {
               <div className="font-mono text-3xl font-bold text-navy-900">{previewScore}</div>
             </div>
           )}
-          <button onClick={handleConfirm} disabled={!confirmForm.dScore || !confirmForm.eScore} className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            <CheckCircle className="w-4 h-4" /> スコア確定
+          <button onClick={handleConfirm} disabled={!confirmForm.dScore || !confirmForm.eScore} className={`w-full flex items-center justify-center gap-2 py-3 text-white rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${editingPerf ? "bg-orange-500 hover:bg-orange-600" : "bg-green-600 hover:bg-green-700"}`}>
+            <CheckCircle className="w-4 h-4" /> {editingPerf ? "修正を保存" : "スコア確定"}
           </button>
         </div>
       )}
@@ -136,6 +164,11 @@ export default function RunView({ competitionId }: { competitionId: string }) {
             {perf.status === "pending" && !perf.isCurrent && (
               <button onClick={() => handleStartScoring(perf.id)} className="flex items-center gap-1 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-dark transition-colors">
                 <Play className="w-3 h-3" /> 開始
+              </button>
+            )}
+            {perf.status === "confirmed" && (
+              <button onClick={() => handleStartEdit(perf)} className="flex items-center gap-1 px-2 py-1.5 text-navy-400 hover:text-orange-500 transition-colors" title="得点修正">
+                <Pencil className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
