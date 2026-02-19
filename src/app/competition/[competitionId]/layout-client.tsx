@@ -1,8 +1,8 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Header from "@/components/Header";
-import { getCompetition } from "@/lib/mock-data";
+import { getCompetition } from "@/lib/store";
 
 export default function CompetitionLayoutClient({
   children,
@@ -12,14 +12,16 @@ export default function CompetitionLayoutClient({
   params: Promise<{ competitionId: string }>;
 }) {
   const { competitionId } = use(params);
-  const competition = getCompetition(competitionId);
+  const [name, setName] = useState<string>("");
+
+  useEffect(() => {
+    const comp = getCompetition(competitionId);
+    if (comp) setName(comp.name);
+  }, [competitionId]);
 
   return (
     <div className="min-h-screen">
-      <Header
-        competitionName={competition?.name}
-        competitionId={competitionId}
-      />
+      <Header competitionName={name} competitionId={competitionId} />
       {children}
     </div>
   );

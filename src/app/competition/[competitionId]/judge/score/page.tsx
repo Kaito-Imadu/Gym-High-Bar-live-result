@@ -1,9 +1,9 @@
 "use client";
 
-import { use, useState, useMemo, Suspense } from "react";
+import { use, useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { getPerformancesWithDetails, getCompetition } from "@/lib/mock-data";
-import { JudgeRole } from "@/types";
+import { getPerformancesWithDetails, getCompetition, submitJudgeScore, getJudgePanels } from "@/lib/store";
+import { JudgeRole, PerformanceWithDetails, Competition } from "@/types";
 import { Send, CheckCircle2, User } from "lucide-react";
 import LiveBadge from "@/components/LiveBadge";
 
@@ -12,7 +12,7 @@ function ScoreInputD({ onSubmit }: { onSubmit: (score: number) => void }) {
   return (
     <div>
       <label className="block text-sm font-medium text-navy-700 mb-2">
-        Dスコア (難度点)
+        Dスコア（難度点）
       </label>
       <input
         type="number"
@@ -45,7 +45,7 @@ function ScoreInputE({ onSubmit }: { onSubmit: (score: number) => void }) {
   return (
     <div>
       <label className="block text-sm font-medium text-navy-700 mb-2">
-        Eスコア (実施点)
+        Eスコア（実施点）
       </label>
       <input
         type="number"
@@ -90,7 +90,7 @@ function ScoreInputND({ onSubmit }: { onSubmit: (score: number) => void }) {
   return (
     <div>
       <label className="block text-sm font-medium text-navy-700 mb-2">
-        ND (ニュートラルディダクション)
+        ND（ニュートラルディダクション）
       </label>
       <div className="grid grid-cols-4 gap-2 mb-3">
         {presets.map((p) => (
@@ -125,17 +125,32 @@ function ScoreInputND({ onSubmit }: { onSubmit: (score: number) => void }) {
 function JudgeScoreContent({ competitionId }: { competitionId: string }) {
   const searchParams = useSearchParams();
   const role = (searchParams.get("role") ?? "E1") as JudgeRole;
-  const competition = getCompetition(competitionId);
-  const performances = getPerformancesWithDetails(competitionId);
+  const [competition, setCompetition] = useState<Competition | undefined>();
+  const [currentPerf, setCurrentPerf] = useState<PerformanceWithDetails | undefined>();
   const [submitted, setSubmitted] = useState(false);
 
-  const currentPerf = useMemo(
-    () => performances.find((p) => p.isCurrent),
-    [performances]
-  );
+  useEffect(() => {
+    const reload = () => {
+      setCompetition(getCompetition(competitionId));
+      const perfs = getPerformancesWithDetails(competitionId);
+      const current = perfs.find((p) => p.isCurrent);
+      if (current?.id !== currentPerf?.id) {
+        setSubmitted(false);
+      }
+      setCurrentPerf(current);
+    };
+    reload();
+    const interval = setInterval(reload, 2000);
+    return () => clearInterval(interval);
+  }, [competitionId]);
 
   const handleSubmit = (score: number) => {
-    console.log(`Judge ${role} submitted score: ${score}`);
+    if (!currentPerf) return;
+    const panels = getJudgePanels(competitionId);
+    const panel = panels.find((p) => p.role === role);
+    if (panel) {
+      submitJudgeScore(currentPerf.id, panel.id, role, score);
+    }
     setSubmitted(true);
   };
 
@@ -166,7 +181,7 @@ function JudgeScoreContent({ competitionId }: { competitionId: string }) {
             {currentPerf.athlete.name}
           </div>
           <div className="text-sm text-navy-500">
-            {currentPerf.athlete.affiliation} / {currentPerf.athlete.grade}
+            {currentPerf.athlete.affiliation}
           </div>
         </div>
       ) : (

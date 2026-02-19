@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import SpaRedirectHandler from "@/components/SpaRedirectHandler";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
+        <SpaRedirectHandler />
         {children}
       </body>
     </html>

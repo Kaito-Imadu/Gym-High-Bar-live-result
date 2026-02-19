@@ -1,9 +1,19 @@
 "use client";
 
-import { use, useState } from "react";
-import { getPerformancesWithDetails, getCompetition } from "@/lib/mock-data";
-import { PerformanceWithDetails } from "@/types";
-import { Play, CheckCircle, Clock, Loader2, SkipForward } from "lucide-react";
+import { use, useState, useEffect, useCallback } from "react";
+import {
+  getCompetition,
+  getPerformancesWithDetails,
+  initPerformances,
+  setCurrentPerformance,
+  confirmPerformance,
+  recalcRanks,
+  updateCompetition,
+  getAthletes,
+} from "@/lib/store";
+import { calculateEScore, calculateFinalScore } from "@/lib/scoring";
+import { PerformanceWithDetails, Competition } from "@/types";
+import { Play, CheckCircle, Clock, Loader2, RefreshCw } from "lucide-react";
 import LiveBadge from "@/components/LiveBadge";
 
 function StatusIcon({ status }: { status: string }) {
@@ -29,9 +39,19 @@ export default function RunPage({
   params: Promise<{ competitionId: string }>;
 }) {
   const { competitionId } = use(params);
-  const competition = getCompetition(competitionId);
-  const initialPerfs = getPerformancesWithDetails(competitionId);
-  const [performances, setPerformances] = useState<PerformanceWithDetails[]>(initialPerfs);
+  const [competition, setCompetition] = useState<Competition | undefined>();
+  const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
+  const [confirmForm, setConfirmForm] = useState({ dScore: "", eScore: "", ndScore: "0" });
+
+  const reload = useCallback(() => {
+    setCompetition(getCompetition(competitionId));
+    initPerformances(competitionId);
+    setPerformances(getPerformancesWithDetails(competitionId));
+  }, [competitionId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const sortedByOrder = [...performances].sort(
     (a, b) => a.athlete.startOrder - b.athlete.startOrder
@@ -40,55 +60,129 @@ export default function RunPage({
   const currentPerf = performances.find((p) => p.isCurrent);
 
   const handleStartScoring = (perfId: string) => {
-    setPerformances((prev) =>
-      prev.map((p) => ({
-        ...p,
-        isCurrent: p.id === perfId,
-        status: p.id === perfId ? "scoring" as const : p.status,
-      }))
-    );
+    setCurrentPerformance(competitionId, perfId);
+    if (competition?.status !== "in_progress") {
+      updateCompetition(competitionId, { status: "in_progress" });
+    }
+    setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+    reload();
   };
 
-  const handleConfirm = (perfId: string) => {
-    setPerformances((prev) => {
-      const updated = prev.map((p) =>
-        p.id === perfId
-          ? { ...p, status: "confirmed" as const, isCurrent: false, finalScore: 13.5, dScore: 5.5, eScore: 8.1, ndScore: 0.1, rank: null }
-          : p
-      );
-      // Recalculate ranks for confirmed
-      const confirmed = updated
-        .filter((p) => p.status === "confirmed" && p.finalScore !== null)
-        .sort((a, b) => (b.finalScore ?? 0) - (a.finalScore ?? 0));
-      confirmed.forEach((p, i) => {
-        p.rank = i + 1;
-      });
-      return updated;
-    });
+  const handleConfirm = () => {
+    if (!currentPerf) return;
+    const d = parseFloat(confirmForm.dScore);
+    const e = parseFloat(confirmForm.eScore);
+    const nd = parseFloat(confirmForm.ndScore) || 0;
+    if (isNaN(d) || isNaN(e)) return;
+    const final = calculateFinalScore(d, e, nd);
+    if (final === null) return;
+    confirmPerformance(currentPerf.id, d, e, nd, final);
+    recalcRanks(competitionId);
+    setConfirmForm({ dScore: "", eScore: "", ndScore: "0" });
+    reload();
   };
+
+  const athleteCount = getAthletes(competitionId).length;
+
+  if (athleteCount === 0) {
+    return (
+      <main className="max-w-2xl mx-auto px-4 py-6">
+        <h1 className="text-xl font-bold text-navy-900 mb-4">競技進行管理</h1>
+        <div className="bg-navy-50 rounded-xl p-8 text-center text-navy-500">
+          <p className="mb-2">先に選手を登録してください</p>
+          <a href={`/competition/${competitionId}/admin/athletes`} className="text-accent hover:underline text-sm">
+            選手登録ページへ
+          </a>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-navy-900">競技進行管理</h1>
-        {competition?.status === "in_progress" && <LiveBadge />}
+        <div className="flex items-center gap-2">
+          {competition?.status === "in_progress" && <LiveBadge />}
+          <button onClick={reload} className="p-2 text-navy-400 hover:text-navy-600">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Current performer highlight */}
+      {/* Current performer + score entry */}
       {currentPerf && (
         <div className="bg-accent/5 border-2 border-accent rounded-xl p-4 mb-6">
           <div className="text-xs text-accent font-medium uppercase tracking-wider mb-1">
             現在の演技者
           </div>
-          <div className="text-lg font-bold text-navy-900">
+          <div className="text-lg font-bold text-navy-900 mb-1">
             {currentPerf.athlete.name}
           </div>
-          <div className="text-sm text-navy-500 mb-3">
+          <div className="text-sm text-navy-500 mb-4">
             {currentPerf.athlete.affiliation}
           </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div>
+              <label className="block text-xs text-navy-600 font-medium mb-1">Dスコア</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={confirmForm.dScore}
+                onChange={(e) => setConfirmForm({ ...confirmForm, dScore: e.target.value })}
+                className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                placeholder="0.0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-navy-600 font-medium mb-1">Eスコア</label>
+              <input
+                type="number"
+                step="0.05"
+                min="0"
+                max="10"
+                value={confirmForm.eScore}
+                onChange={(e) => setConfirmForm({ ...confirmForm, eScore: e.target.value })}
+                className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                placeholder="0.000"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-navy-600 font-medium mb-1">ND</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="5"
+                value={confirmForm.ndScore}
+                onChange={(e) => setConfirmForm({ ...confirmForm, ndScore: e.target.value })}
+                className="w-full px-3 py-2 border border-navy-200 rounded-lg font-mono text-center text-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                placeholder="0.0"
+              />
+            </div>
+          </div>
+
+          {/* Preview */}
+          {confirmForm.dScore && confirmForm.eScore && (
+            <div className="bg-white rounded-lg p-3 mb-4 text-center">
+              <div className="text-xs text-navy-500 mb-1">最終得点プレビュー</div>
+              <div className="font-mono text-3xl font-bold text-navy-900">
+                {(
+                  (parseFloat(confirmForm.dScore) || 0) +
+                  (parseFloat(confirmForm.eScore) || 0) -
+                  (parseFloat(confirmForm.ndScore) || 0)
+                ).toFixed(3)}
+              </div>
+            </div>
+          )}
+
           <button
-            onClick={() => handleConfirm(currentPerf.id)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+            onClick={handleConfirm}
+            disabled={!confirmForm.dScore || !confirmForm.eScore}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <CheckCircle className="w-4 h-4" />
             スコア確定
@@ -118,38 +212,30 @@ export default function RunPage({
             </div>
             <div className="text-right">
               {perf.status === "confirmed" && perf.finalScore !== null ? (
-                <div className="font-mono font-bold text-navy-900">
-                  {perf.finalScore.toFixed(3)}
+                <div>
+                  <div className="font-mono font-bold text-navy-900">
+                    {perf.finalScore.toFixed(3)}
+                  </div>
+                  {perf.rank && (
+                    <div className="text-xs text-accent font-medium">{perf.rank}位</div>
+                  )}
                 </div>
               ) : (
                 <span className="text-xs text-navy-400">{statusLabels[perf.status]}</span>
               )}
             </div>
-            {perf.status === "pending" && !currentPerf && (
+            {perf.status === "pending" && !perf.isCurrent && (
               <button
                 onClick={() => handleStartScoring(perf.id)}
-                className="flex items-center gap-1 px-2 py-1 bg-accent text-white rounded text-xs font-medium hover:bg-accent-dark transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-dark transition-colors"
               >
                 <Play className="w-3 h-3" />
                 開始
               </button>
             )}
-            {perf.status === "pending" && currentPerf && (
-              <button
-                onClick={() => handleStartScoring(perf.id)}
-                className="flex items-center gap-1 px-2 py-1 bg-navy-200 text-navy-600 rounded text-xs font-medium hover:bg-navy-300 transition-colors"
-              >
-                <SkipForward className="w-3 h-3" />
-                次へ
-              </button>
-            )}
           </div>
         ))}
       </div>
-
-      <p className="mt-3 text-xs text-navy-400 text-center">
-        ※ モックモード: 確定時のスコアはダミー値です
-      </p>
     </main>
   );
 }
