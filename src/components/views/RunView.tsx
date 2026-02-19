@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { competitionHref } from "@/lib/navigation";
 import {
   getCompetition, getPerformancesWithDetails, initPerformances,
@@ -24,28 +24,39 @@ export default function RunView({ competitionId }: { competitionId: string }) {
   const [competition, setCompetition] = useState<Competition | undefined>();
   const [performances, setPerformances] = useState<PerformanceWithDetails[]>([]);
   const [dScore, setDScore] = useState("");
-  const [eScores, setEScores] = useState<string[]>([]);
   const [ndScore, setNdScore] = useState("0");
   const [bonus, setBonus] = useState("0");
   const [editingPerfId, setEditingPerfId] = useState<string | null>(null);
   const [displayPerfId, setDisplayPerfId] = useState<string | null>(null);
-  const [eJudgeCount, setEJudgeCount] = useState<number>(() => {
+
+  // E judge count & scores
+  const initECount = () => {
     const panels = getJudgePanels(competitionId);
     const registered = panels.filter((p) => p.role.startsWith("E") && p.judgeName.trim()).length;
     return registered > 0 ? registered : 3;
-  });
+  };
+  const [eJudgeCount, setEJudgeCount] = useState(initECount);
+  const [eScores, setEScores] = useState<string[]>(() => Array(initECount()).fill(""));
 
-  const eJudgeRoles = useMemo(() => {
-    const allE: JudgeRole[] = ["E1", "E2", "E3", "E4", "E5", "E6"];
-    return allE.slice(0, eJudgeCount);
-  }, [eJudgeCount]);
+  const allE: JudgeRole[] = ["E1", "E2", "E3", "E4", "E5", "E6"];
+  const eJudgeRoles = allE.slice(0, eJudgeCount);
+
+  // Resize eScores when eJudgeCount changes
+  const handleSetEJudgeCount = (n: number) => {
+    setEJudgeCount(n);
+    setEScores((prev) => {
+      const updated = Array(n).fill("");
+      for (let i = 0; i < Math.min(prev.length, n); i++) updated[i] = prev[i];
+      return updated;
+    });
+  };
 
   const resetForm = useCallback(() => {
     setDScore("");
-    setEScores(eJudgeRoles.map(() => ""));
+    setEScores(Array(eJudgeCount).fill(""));
     setNdScore("0");
     setBonus("0");
-  }, [eJudgeRoles]);
+  }, [eJudgeCount]);
 
   const reload = useCallback(() => {
     setCompetition(getCompetition(competitionId));
@@ -56,14 +67,6 @@ export default function RunView({ competitionId }: { competitionId: string }) {
   }, [competitionId]);
 
   useEffect(() => { reload(); }, [reload]);
-
-  // Initialize eScores array when eJudgeRoles changes
-  useEffect(() => {
-    setEScores((prev) => {
-      if (prev.length === eJudgeRoles.length) return prev;
-      return eJudgeRoles.map((_, i) => prev[i] ?? "");
-    });
-  }, [eJudgeRoles]);
 
   const sortedByOrder = [...performances].sort((a, b) => a.athlete.startOrder - b.athlete.startOrder);
   const currentPerf = performances.find((p) => p.isCurrent);
@@ -94,7 +97,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
     setEditingPerfId(perf.id);
     setDScore(perf.dScore?.toString() ?? "");
     // When editing, set all E scores to the same value (eScore) since individual scores aren't stored
-    setEScores(eJudgeRoles.map(() => perf.eScore?.toString() ?? ""));
+    setEScores(Array(eJudgeCount).fill(perf.eScore?.toString() ?? ""));
     setNdScore(perf.ndScore?.toString() ?? "0");
     setBonus(perf.bonus?.toString() ?? "0");
   };
@@ -207,7 +210,7 @@ export default function RunView({ competitionId }: { competitionId: string }) {
               <div className="flex items-center gap-1">
                 <span className="text-xs text-navy-400">E審判数:</span>
                 {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <button key={n} type="button" onClick={() => setEJudgeCount(n)} className={`w-7 h-7 rounded text-xs font-bold transition-colors ${eJudgeCount === n ? "bg-accent text-white" : "bg-navy-100 text-navy-600 hover:bg-navy-200"}`}>{n}</button>
+                  <button key={n} type="button" onClick={() => handleSetEJudgeCount(n)} className={`w-7 h-7 rounded text-xs font-bold transition-colors ${eJudgeCount === n ? "bg-accent text-white" : "bg-navy-100 text-navy-600 hover:bg-navy-200"}`}>{n}</button>
                 ))}
               </div>
             </div>
