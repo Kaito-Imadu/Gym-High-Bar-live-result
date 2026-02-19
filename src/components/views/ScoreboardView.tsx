@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPerformancesWithDetails, getCompetition } from "@/lib/store";
+import { getPerformancesWithDetails, getCompetition, initPerformances } from "@/lib/store";
 import LiveBadge from "@/components/LiveBadge";
 import HighBarIcon from "@/components/HighBarIcon";
 import { PerformanceWithDetails, Competition } from "@/types";
@@ -76,6 +76,7 @@ export default function ScoreboardView({ competitionId }: { competitionId: strin
   useEffect(() => {
     const reload = () => {
       setCompetition(getCompetition(competitionId));
+      initPerformances(competitionId);
       setPerformances(getPerformancesWithDetails(competitionId));
     };
     reload();
