@@ -26,6 +26,7 @@ export default function JudgeLoginView({ competitionId }: { competitionId: strin
     <main className="max-w-md mx-auto px-4 py-12">
       <div className="bg-white rounded-xl shadow-sm border border-navy-200 p-6">
         <div className="flex items-center gap-2 mb-6"><Lock className="w-5 h-5 text-accent" /><h1 className="text-xl font-bold text-navy-900">審判ログイン</h1></div>
+        <p className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">デモ（認証なし）。入力したパスワードは検証されません。実際の審判用パスワードを入力しないでください。</p>
         {judges.length === 0 ? (
           <div className="text-center py-6 text-navy-400"><p>審判が登録されていません</p><p className="text-sm mt-1">管理画面で審判を登録してください</p></div>
         ) : (
